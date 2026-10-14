@@ -146,3 +146,10 @@ transaction, couverture ajustable en continu. En pratique, un réajustement disc
 une erreur de réplication qui ne disparaît jamais et ne décroît que comme 1/√N avec le
 nombre N de réajustements. La volatilité estimée sur l'historique est de surcroît une
 approximation de celle que cote le marché.
+
+---
+
+Ce travail prolonge un projet personnel plus large sur la valorisation et la couverture
+d'options : [github.com/TTB10/moteur-valorisation](https://github.com/TTB10/moteur-valorisation)
+(trois moteurs validés croisément, surface de volatilité implicite sur données de marché,
+VaR et backtesting).
