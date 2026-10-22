@@ -153,3 +153,5 @@ Ce travail prolonge un projet personnel plus large sur la valorisation et la cou
 d'options : [github.com/TTB10/moteur-valorisation](https://github.com/TTB10/moteur-valorisation)
 (trois moteurs validés croisément, surface de volatilité implicite sur données de marché,
 VaR et backtesting).
+
+**[Essayer l'application en ligne](https://couverture-options-m2.streamlit.app/)** *(peut mettre une trentaine de secondes à se réveiller)*
