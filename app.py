@@ -11,6 +11,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+from guide import afficher_guide, rouvrir_guide
 from pricer import market_data as md
 from pricer.checks import toutes_les_verifications
 from pricer.position import Portfolio, Position
@@ -29,6 +30,7 @@ VALEURS_PAR_DEFAUT = {"spot": 100.0, "strike": 100.0, "maturity": 0.5,
 
 st.set_page_config(page_title="Couverture d'une position d'options", layout="wide",
                    page_icon="🛡️")
+afficher_guide()        # guide de démarrage, tant qu'il n'a pas été vu ou passé
 
 for cle, valeur in VALEURS_PAR_DEFAUT.items():
     st.session_state.setdefault(cle, valeur)
@@ -62,6 +64,9 @@ def importer_marche():
 # =====================================================================
 
 with st.sidebar:
+    st.button("Revoir le guide", key="revoir_guide", on_click=rouvrir_guide,
+              help="Rouvre le guide de démarrage en six étapes.")
+
     st.header("1 · Position")
     libelle = st.selectbox("Type de position", list(POSITIONS))
     sens, option_type = POSITIONS[libelle]
@@ -92,7 +97,7 @@ with st.sidebar:
         st.select_slider("Fenêtre d'estimation de la volatilité (séances)",
                          options=[20, 30, 60, 90, 120, 252], key="fenetre")
         st.button("Récupérer cours et volatilité", on_click=importer_marche,
-                  use_container_width=True)
+                  width="stretch")
         st.caption("Le cours est observable ; la volatilité ne l'est pas. Elle est estimée ici "
                    "sur l'historique récent (volatilité *réalisée*), ce qui diffère de la "
                    "volatilité *implicite* cotée par le marché.")
@@ -115,25 +120,6 @@ st.title("Couverture en delta d'une position d'options")
 st.caption(f"**{libelle}** · {quantity:.0f} contrats × {taille_contrat:.0f} = "
            f"{nb_options:.0f} options · K = {strike:.2f} € · T = {maturity:.2f} an · "
            f"r = {rate:.2%} · σ = {vol:.1%}")
-
-with st.expander("Mode d'emploi — à lire une fois", expanded=True):
-    st.markdown(
-        "**1 · Saisir la position** (barre latérale). Choisissez le sens et le type d'option "
-        "(achat ou vente, call ou put), la quantité, puis le contrat (strike, maturité) et le "
-        "marché (cours, taux, volatilité). Une saisie invalide est refusée avec un message "
-        "explicite : l'outil ne plante pas.\n\n"
-        "**2 · Importer les données réelles** (facultatif). Dans *Marché → Importer depuis Yahoo "
-        "Finance*, saisissez un ticker (AAPL, MSFT, ^GSPC, AIR.PA) et cliquez : le cours, le "
-        "strike et la volatilité réalisée se remplissent automatiquement.\n\n"
-        "**3 · Lire la couverture.** L'encart donne le prix, le delta unitaire et le gamma par "
-        "option, puis la valeur, le delta et le gamma de la position entière, et enfin le nombre "
-        "d'actions à traiter, énoncé en clair.\n\n"
-        "**4 · Faire bouger le marché.** Le curseur de cours met tout à jour instantanément : "
-        "les chiffres, le point noir sur les deux graphiques, et l'ajustement à effectuer pour "
-        "rester couvert.\n\n"
-        "**5 · Explorer les onglets.** *Données de marché* montre l'historique et la volatilité "
-        "glissante ; *Vérification des formules* rejoue en direct les contrôles mathématiques ; "
-        "*Portefeuille* agrège plusieurs options.")
 
 onglets = st.tabs(["Couverture", "Données de marché", "Vérification des formules",
                    "Portefeuille (bonus)"])
@@ -164,11 +150,17 @@ def graphique(abscisses, ordonnees, titre, axe_y, couleur, point_courant, refere
 # =====================================================================
 
 with onglets[0]:
+
+    # Bornes du curseur : ±40 % autour du cours saisi. On impose un écart minimal,
+    # sinon un cours très faible donnerait un minimum égal au maximum.
+    borne_basse = max(round(spot_initial * 0.6, 2), 0.01)
+    borne_haute = max(round(spot_initial * 1.4, 2), borne_basse + 1.0)
+    pas = max(round((borne_haute - borne_basse) / 200, 2), 0.01)
+
     spot = st.slider("Cours simulé S₁ (€) — déplacez le curseur, tout se met à jour",
-                     min_value=float(round(spot_initial * 0.6, 2)),
-                     max_value=float(round(spot_initial * 1.4, 2)),
-                     value=float(spot_initial),
-                     step=float(max(round(spot_initial / 200, 2), 0.01)))
+                     min_value=float(borne_basse), max_value=float(borne_haute),
+                     value=float(min(max(spot_initial, borne_basse), borne_haute)),
+                     step=float(pas))
 
     actions = position.shares_to_hold(spot)
 
@@ -253,7 +245,7 @@ with onglets[0]:
         valeurs, axe_y = COURBES[courbe_choisie]
         st.plotly_chart(graphique(spots, valeurs, f"{courbe_choisie} selon le cours",
                                   axe_y, "#1f77b4", spot, spot_initial),
-                        use_container_width=True)
+                        width="stretch")
         st.caption("Les trois courbes décrivent la même chose : la couverture est l'opposé du "
                    "delta de position, lui-même égal au delta unitaire multiplié par la "
                    "quantité signée. La **pente** de la courbe est le gamma : c'est elle qui "
@@ -264,7 +256,7 @@ with onglets[0]:
         valeurs, axe_y = GAMMAS[gamma_choisi]
         st.plotly_chart(graphique(spots, valeurs, f"{gamma_choisi} selon le cours",
                                   axe_y, "#d62728", spot, spot_initial),
-                        use_container_width=True)
+                        width="stretch")
         gammas = GAMMAS["Gamma de la position"][0]
         instable = spots[np.argmax(np.abs(gammas))]
         st.caption(f"Le gamma est extrême vers **{instable:.2f} €** : c'est là que la couverture "
@@ -301,7 +293,7 @@ with onglets[1]:
                              xaxis_title="Date", yaxis_title="Cours (devise de cotation)",
                              hovermode="x unified", margin=dict(t=55, b=10),
                              legend=dict(orientation="h", y=-0.2))
-        st.plotly_chart(figure, use_container_width=True)
+        st.plotly_chart(figure, width="stretch")
 
         vol_glissante = snapshot.vol_glissante().dropna() * 100
         figure = go.Figure()
@@ -314,7 +306,7 @@ with onglets[1]:
                              xaxis_title="Date", yaxis_title="Volatilité annualisée (%)",
                              hovermode="x unified", margin=dict(t=55, b=10),
                              legend=dict(orientation="h", y=-0.2))
-        st.plotly_chart(figure, use_container_width=True)
+        st.plotly_chart(figure, width="stretch")
 
         st.caption("La volatilité n'est pas constante dans le temps, contrairement à ce que "
                    "suppose Black-Scholes : elle se regroupe en périodes calmes et en périodes "
@@ -355,7 +347,7 @@ with onglets[2]:
     st.dataframe(tableau.style.format({"Membre de gauche": "{:.10f}",
                                        "Membre de droite": "{:.10f}",
                                        "Écart": "{:.2e}", "Tolérance": "{:.0e}"}),
-                 use_container_width=True)
+                 width="stretch")
 
     if all(v.ok for v in verifications):
         st.success("Toutes les relations sont vérifiées : les formules sont cohérentes pour "
@@ -385,7 +377,7 @@ with onglets[3]:
         {"sens": "short", "option_type": "put", "quantity": 100, "strike": strike * 0.95},
     ])
     saisie = st.data_editor(
-        defaut, num_rows="dynamic", use_container_width=True,
+        defaut, num_rows="dynamic", width="stretch",
         column_config={
             "sens": st.column_config.SelectboxColumn("Sens", options=["long", "short"]),
             "option_type": st.column_config.SelectboxColumn("Type", options=["call", "put"]),
@@ -417,7 +409,7 @@ with onglets[3]:
                                       "Couverture du portefeuille selon le cours",
                                       "Actions à détenir (nombre)", "#2ca02c",
                                       spot_initial, spot_initial),
-                            use_container_width=True)
+                            width="stretch")
             st.caption("Exemple par défaut : un *straddle* vendu, call et put vendus. Son delta "
                        "est faible, mais son gamma est fortement négatif : la position ne craint "
                        "pas les petits mouvements, seulement les grands.")

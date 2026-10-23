@@ -12,13 +12,22 @@ streamlit run app.py
 ```
 
 L'application s'ouvre dans le navigateur sur `http://localhost:8501`.
-Testé avec Python 3.12 et 3.14.
+Testé avec Python 3.12 et 3.14. Streamlit 1.65 ou plus récent est nécessaire : le guide
+de démarrage utilise `st.dialog(..., on_dismiss=...)`.
 
 Pour rejouer les vérifications de formules :
 
 ```bash
-python -m pytest -q      # 270 tests
+python -m pytest -q      # 274 tests
 ```
+
+## Guide de démarrage
+
+À la première ouverture, une fenêtre de six étapes explique l'outil : saisie de la
+position, lecture des résultats, curseur de cours, onglets. Elle se ferme par
+« Passer le guide », « Commencer », la croix, la touche Échap ou un clic à côté, et se
+rouvre à tout moment par le bouton **Revoir le guide** en haut de la barre latérale.
+Le guide est affiché une fois par session (`st.session_state`).
 
 ## Utilisation en quatre gestes
 
@@ -54,6 +63,8 @@ nul — l'option se comporte alors comme un contrat à terme et la couverture ne
 ```
 .
 ├── app.py                     interface Streamlit — aucun calcul financier
+├── guide.py                   guide de démarrage en six étapes (texte, mémoire, style)
+├── .streamlit/config.toml     thème de l'application
 ├── pricer/
 │   ├── black_scholes.py       prix, delta, gamma ; fonctions vectorisées
 │   ├── position.py            Position et Portfolio : valeur, sensibilités, couverture
@@ -146,12 +157,3 @@ transaction, couverture ajustable en continu. En pratique, un réajustement disc
 une erreur de réplication qui ne disparaît jamais et ne décroît que comme 1/√N avec le
 nombre N de réajustements. La volatilité estimée sur l'historique est de surcroît une
 approximation de celle que cote le marché.
-
----
-
-Ce travail prolonge un projet personnel plus large sur la valorisation et la couverture
-d'options : [github.com/TTB10/moteur-valorisation](https://github.com/TTB10/moteur-valorisation)
-(trois moteurs validés croisément, surface de volatilité implicite sur données de marché,
-VaR et backtesting).
-
-**[Essayer l'application en ligne](https://couverture-options-m2.streamlit.app/)** *(peut mettre une trentaine de secondes à se réveiller)*
